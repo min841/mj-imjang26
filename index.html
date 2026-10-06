@@ -13,6 +13,9 @@
         .badge-check { background-color: #e8f5e9; color: #2e7d32; font-size: 0.78rem; padding: 4px 8px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; display: inline-block; }
         .badge-infra { background-color: #e3f2fd; color: #1565c0; font-size: 0.78rem; padding: 4px 8px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; display: inline-block; }
         .qa-comment { background-color: #f1f3f5; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; }
+        .comment-btn { border: none; background: none; color: #6c757d; font-size: 0.75rem; padding: 0 4px; cursor: pointer; }
+        .comment-btn:hover { color: #0d6efd; text-decoration: underline; }
+        .comment-btn.delete:hover { color: #dc3545; }
         .chk-section-title { font-size: 0.85rem; font-weight: bold; color: #495057; margin-bottom: 6px; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; }
     </style>
 </head>
@@ -172,7 +175,7 @@
 
     // ⚠️ 민정님의 mj-imjang26 프로젝트 Firebase 설정 정보
     const firebaseConfig = {
-        apiKey: "AIzaSyCLVntOsMvUw8i15a1...", // Firebase 콘솔의 실제 API Key로 꼭 확인하세요!
+        apiKey: "AIzaSyCLVntOsMvUw8i15a1...", // Firebase 콘솔의 실제 API Key로 확인해 주세요!
         authDomain: "mj-imjang26.firebaseapp.com",
         projectId: "mj-imjang26",
         storageBucket: "mj-imjang26.firebasestorage.app",
@@ -260,8 +263,14 @@
                         <div class="border-top pt-2 mt-2">
                             <div class="fw-semibold small mb-1">💬 의견 / Q&A</div>
                             <div class="d-flex flex-column gap-1 mb-2">
-                                ${(item.comments || []).map(c => `
-                                    <div class="qa-comment"><strong>${c.author}:</strong>${c.text}</div>
+                                ${(item.comments || []).map((c, idx) => `
+                                    <div class="qa-comment d-flex justify-content-between align-items-center">
+                                        <div><strong>${c.author}:</strong>${c.text}</div>
+                                        <div class="ms-2 text-nowrap">
+                                            <button class="comment-btn" onclick="editComment('${item.id}',${idx})">수정</button>
+                                            <button class="comment-btn delete" onclick="deleteComment('${item.id}',${idx})">삭제</button>
+                                        </div>
+                                    </div>
                                 `).join('')}
                             </div>
                             <div class="input-group input-group-sm">
@@ -335,12 +344,10 @@
         });
         html += `</tr></thead><tbody>`;
 
-        // 항목별 비교 행
         html += `<tr><td class="fw-bold bg-light">가격</td>` + items.map(i => `<td class="text-primary fw-bold fs-6">${i.price}</td>`).join('') + `</tr>`;
         html += `<tr><td class="fw-bold bg-light">평점</td>` + items.map(i => `<td>⭐ ${i.rating}점</td>`).join('') + `</tr>`;
         html += `<tr><td class="fw-bold bg-light">주소</td>` + items.map(i => `<td class="small">${i.address || '-'}</td>`).join('') + `</tr>`;
         
-        // 체크리스트 비교
         const chkList = [
             { key: 'chk_sash', label: '샷시 상태' },
             { key: 'chk_leak', label: '누수 없음' },
@@ -363,7 +370,6 @@
         });
 
         html += `<tr><td class="fw-bold bg-light">상세 메모</td>` + items.map(i => `<td class="small text-start">${i.memo || '-'}</td>`).join('') + `</tr>`;
-
         html += `</tbody></table></div>`;
 
         document.getElementById('compareModalBody').innerHTML = html;
@@ -419,7 +425,7 @@
         }
     });
 
-    // 7. 수정 모드 전환
+    // 7. 매물 수정 모드
     window.editImjang = function(id) {
         const item = allImjangs.find(i => i.id === id);
         if (!item) return;
@@ -458,7 +464,7 @@
         document.getElementById('imjangForm').reset();
     }
 
-    // 8. 삭제
+    // 8. 매물 삭제
     window.deleteImjang = async function(id) {
         if (confirm("정말 이 일지를 삭제하시겠습니까?")) {
             await deleteDoc(doc(db, "imjangs", id));
@@ -483,7 +489,34 @@
         input.value = '';
     };
 
-    // 10. 뷰 모드 설정 및 검색
+    // 10. 댓글 수정
+    window.editComment = async function(id, commentIdx) {
+        const item = allImjangs.find(i => i.id === id);
+        if (!item || !item.comments || !item.comments[commentIdx]) return;
+
+        const currentComment = item.comments[commentIdx];
+        const newText = prompt("댓글 내용을 수정하세요:", currentComment.text);
+
+        if (newText !== null && newText.trim() !== "") {
+            const updatedComments = [...item.comments];
+            updatedComments[commentIdx].text = newText.trim();
+
+            await updateDoc(doc(db, "imjangs", id), { comments: updatedComments });
+        }
+    };
+
+    // 11. 댓글 삭제
+    window.deleteComment = async function(id, commentIdx) {
+        if (!confirm("이 댓글을 삭제하시겠습니까?")) return;
+
+        const item = allImjangs.find(i => i.id === id);
+        if (!item || !item.comments) return;
+
+        const updatedComments = item.comments.filter((_, idx) => idx !== commentIdx);
+        await updateDoc(doc(db, "imjangs", id), { comments: updatedComments });
+    };
+
+    // 12. 뷰 모드 설정 및 검색
     window.setViewMode = function(mode) {
         currentViewMode = mode;
         document.getElementById('btnCardView').classList.toggle('active', mode === 'card');
