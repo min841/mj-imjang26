@@ -363,13 +363,13 @@
                         <!-- 댓글 / Q&A 섹션 -->
                         <div class="border-t pt-4 mt-2">
                             <h4 class="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
-                                <i class="fas fa-comments text-indigo-500"></i> 자매 전용 Q&A / 댓글
+                                <i class="fas fa-comments text-indigo-500"></i> Q&A / 댓글
                             </h4>
                             <div class="space-y-2 mb-3">
                                 ${commentsHtml}
                             </div>
                             <div class="flex gap-2">
-                                <input type="text" id="author-${id}" placeholder="이름 (예: 민정/동생)" class="w-24 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
+                                <input type="text" id="author-${id}" placeholder="이름 (예: 민정/정표)" class="w-24 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
                                 <input type="text" id="commentText-${id}" placeholder="질문이나 답글을 적으세요..." class="flex-1 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
                                 <button onclick="addComment('${id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">등록</button>
                             </div>
