@@ -10,19 +10,22 @@
         body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card-custom { border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .star-rating { color: #ffc107; }
-        .badge-check { background-color: #e8f5e9; color: #2e7d32; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; display: inline-block; }
-        .qa-comment { background-color: #f1f3f5; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; }
+        .badge-check { background-color: #e8f5e9; color: #2e7d32; font-size: 0.78rem; padding: 4px 8px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; display: inline-block; }
+        .badge-infra { background-color: #e3f2fd; color: #1565c0; font-size: 0.78rem; padding: 4px 8px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; display: inline-block; }
+        .qa-comment { background-color: #f1f3f5; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; }
+        .chk-section-title { font-size: 0.85rem; font-weight: bold; color: #495057; margin-bottom: 6px; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; }
     </style>
 </head>
 <body>
 
-<div class="container py-4" style="max-width: 900px;">
+<div class="container py-4" style="max-width: 950px;">
     <!-- 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold m-0">🏡 mj-imjang26 부동산 임장일지</h2>
+        <button class="btn btn-primary fw-bold" onclick="openCompareModal()">⚖️ 매물 비교하기 (<span id="compareCount">0</span>)</button>
     </div>
 
-    <!-- 대시보드요약 -->
+    <!-- 대시보드 요약 -->
     <div class="row g-3 mb-4">
         <div class="col-4">
             <div class="card card-custom p-3 text-center">
@@ -72,24 +75,38 @@
                     </select>
                 </div>
 
-                <!-- 체크리스트 -->
+                <!-- 확장 체크리스트 -->
                 <div class="col-12">
                     <label class="form-label fw-semibold">체크리스트 점검</label>
                     <div class="p-3 bg-light rounded">
-                        <div class="row g-2">
+                        <!-- 내부 상태 -->
+                        <div class="chk-section-title">🏠 내부 상태</div>
+                        <div class="row g-2 mb-3">
                             <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_sash"><label class="form-check-label" for="chk_sash">샷시/창호 상태</label></div></div>
-                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_leak"><label class="form-check-label" for="chk_leak">누수 흔적</label></div></div>
-                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_mold"><label class="form-check-label" for="chk_mold">곰팡이 결로</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_leak"><label class="form-check-label" for="chk_leak">누수 흔적 없음</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_mold"><label class="form-check-label" for="chk_mold">곰팡이/결로 없음</label></div></div>
                             <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_water"><label class="form-check-label" for="chk_water">수압/배수 굿</label></div></div>
-                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_noise"><label class="form-check-label" for="chk_noise">층간/외부 소음</label></div></div>
-                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_parking"><label class="form-check-label" for="chk_parking">주차 공간 넉넉</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_noise"><label class="form-check-label" for="chk_noise">층간/외부 소음 적음</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_underpark"><label class="form-check-label" for="chk_underpark">지하주차장 연결</label></div></div>
+                        </div>
+
+                        <!-- 주변 인프라 및 입지 -->
+                        <div class="chk-section-title">🏪 주변 인프라 및 입지</div>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_station"><label class="form-check-label" for="chk_station">지하철역 도보권</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_mart"><label class="form-check-label" for="chk_mart">대형마트 인근</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_school"><label class="form-check-label" for="chk_school">초/중/고 학교 인근</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_park"><label class="form-check-label" for="chk_park">공원/산책로</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_daiso"><label class="form-check-label" for="chk_daiso">다이소 도보권</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_oliveyoung"><label class="form-check-label" for="chk_oliveyoung">올리브영 도보권</label></div></div>
+                            <div class="col-6 col-md-4"><div class="form-check"><input class="form-check-input chk" type="checkbox" id="chk_convenience"><label class="form-check-label" for="chk_convenience">편의점 가까움</label></div></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label fw-semibold">특이사항 및 메모</label>
-                    <textarea id="memo" class="form-control" rows="3" placeholder="남향, 일조량 우수, 입주 협의 가능 등"></textarea>
+                    <label class="form-label fw-semibold">특이사항 및 상세 메모</label>
+                    <textarea id="memo" class="form-control" rows="3" placeholder="남향, 일조량 우수, 로얄동, 인프라 동선 최고 등"></textarea>
                 </div>
 
                 <div class="col-12 d-flex gap-2">
@@ -116,10 +133,11 @@
             <table class="table table-hover align-middle m-0">
                 <thead>
                     <tr>
+                        <th>선택</th>
                         <th>매물명</th>
                         <th>가격</th>
                         <th>평점</th>
-                        <th>주요 체크리스트</th>
+                        <th>주요 특징</th>
                         <th>관리</th>
                     </tr>
                 </thead>
@@ -129,14 +147,32 @@
     </div>
 </div>
 
-<!-- Firebase SDK (v10.8.0) -->
+<!-- 매물 비교 모달 -->
+<div class="modal fade" id="compareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">⚖️ 매물 비교분석 (최대 3개)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="compareModalBody">
+                <!-- 비교 내용 동적 생성 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // ⚠️ 민정님의 mj-imjang26 프로젝트 Firebase 설정 정보
     const firebaseConfig = {
-        apiKey: "AIzaSyCLVntOsMvUw8i15a1...", // 실제 Firebase 콘솔의 API Key로 확인 필요
+        apiKey: "AIzaSyCLVntOsMvUw8i15a1...", // Firebase 콘솔의 실제 API Key로 꼭 확인하세요!
         authDomain: "mj-imjang26.firebaseapp.com",
         projectId: "mj-imjang26",
         storageBucket: "mj-imjang26.firebasestorage.app",
@@ -148,20 +184,19 @@
     const db = getFirestore(app);
 
     let allImjangs = [];
+    let selectedCompareIds = [];
     let currentViewMode = 'card';
-    let currentEditId = null; // null이면 신규, ID가 있으면 수정 모드
+    let currentEditId = null;
 
-    // 1. 데이터 실시간 불러오기 (PC - 모바일 실시간 동기화)
+    // 1. 실시간 데이터 불러오기
     const q = query(collection(db, "imjangs"), orderBy("createdAt", "desc"));
     onSnapshot(q, (snapshot) => {
         allImjangs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         updateDashboard();
         renderImjangs();
-    }, (error) => {
-        console.error("Firestore 동기화 에러:", error);
     });
 
-    // 2. 대시보드 업데이트
+    // 2. 대시보드
     function updateDashboard() {
         document.getElementById('totalCount').innerText = allImjangs.length;
         if (allImjangs.length > 0) {
@@ -188,22 +223,38 @@
             
             document.getElementById('cardViewArea').innerHTML = filtered.map(item => `
                 <div class="col-md-6">
-                    <div class="card card-custom p-3 h-100">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="fw-bold m-0">${item.title}</h5>
-                            <span class="star-rating">${'⭐'.repeat(Number(item.rating || 0))}</span>
+                    <div class="card card-custom p-3 h-100 position-relative">
+                        <div class="form-check position-absolute top-0 end-0 m-3">
+                            <input class="form-check-input" type="checkbox" value="${item.id}" 
+                                ${selectedCompareIds.includes(item.id) ? 'checked' : ''} 
+                                onchange="toggleCompareSelect('${item.id}')">
+                            <label class="form-check-label small fw-bold text-muted">비교</label>
                         </div>
-                        <div class="text-primary fw-bold mb-2">${item.price}</div>
-                        <div class="text-muted small mb-2">${item.address || '주소 미입력'}</div>
+                        <div class="d-flex justify-content-between align-items-start mb-2 me-4">
+                            <h5 class="fw-bold m-0">${item.title}</h5>
+                        </div>
+                        <div class="mb-2"><span class="star-rating">${'⭐'.repeat(Number(item.rating || 0))}</span></div>
+                        <div class="text-primary fw-bold mb-2 fs-5">${item.price}</div>
+                        <div class="text-muted small mb-2">📍 ${item.address || '주소 미입력'}</div>
+                        
+                        <!-- 체크리스트 태그들 -->
                         <div class="mb-2">
                             ${item.checklist?.chk_sash ? '<span class="badge-check">샷시양호</span>' : ''}
                             ${item.checklist?.chk_leak ? '<span class="badge-check">누수없음</span>' : ''}
                             ${item.checklist?.chk_mold ? '<span class="badge-check">곰팡이없음</span>' : ''}
                             ${item.checklist?.chk_water ? '<span class="badge-check">수압양호</span>' : ''}
                             ${item.checklist?.chk_noise ? '<span class="badge-check">소음없음</span>' : ''}
-                            ${item.checklist?.chk_parking ? '<span class="badge-check">주차편리</span>' : ''}
+                            ${item.checklist?.chk_underpark ? '<span class="badge-check">지하주차장</span>' : ''}
+                            ${item.checklist?.chk_station ? '<span class="badge-infra">지하철역</span>' : ''}
+                            ${item.checklist?.chk_mart ? '<span class="badge-infra">대형마트</span>' : ''}
+                            ${item.checklist?.chk_school ? '<span class="badge-infra">학교</span>' : ''}
+                            ${item.checklist?.chk_park ? '<span class="badge-infra">공원</span>' : ''}
+                            ${item.checklist?.chk_daiso ? '<span class="badge-infra">다이소</span>' : ''}
+                            ${item.checklist?.chk_oliveyoung ? '<span class="badge-infra">올리브영</span>' : ''}
+                            ${item.checklist?.chk_convenience ? '<span class="badge-infra">편의점</span>' : ''}
                         </div>
-                        <p class="text-secondary small flex-grow-1">${item.memo || '메모 없음'}</p>
+                        
+                        <p class="text-secondary small flex-grow-1 border-top pt-2 mt-1 mb-2">${item.memo || '메모 없음'}</p>
                         
                         <!-- 댓글/Q&A -->
                         <div class="border-top pt-2 mt-2">
@@ -236,10 +287,15 @@
 
             document.getElementById('tableTbody').innerHTML = filtered.map(item => `
                 <tr>
+                    <td>
+                        <input class="form-check-input" type="checkbox" value="${item.id}" 
+                            ${selectedCompareIds.includes(item.id) ? 'checked' : ''} 
+                            onchange="toggleCompareSelect('${item.id}')">
+                    </td>
                     <td class="fw-bold">${item.title}</td>
                     <td class="text-primary fw-bold">${item.price}</td>
                     <td><span class="star-rating">${'⭐'.repeat(Number(item.rating || 0))}</span></td>
-                    <td class="small">${item.memo || '-'}</td>
+                    <td class="small text-truncate" style="max-width: 200px;">${item.memo || '-'}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="editImjang('${item.id}')">수정</button>
                         <button class="btn btn-sm btn-outline-danger" onclick="deleteImjang('${item.id}')">삭제</button>
@@ -249,7 +305,73 @@
         }
     };
 
-    // 4. 저장 또는 수정 제출
+    // 4. 비교 매물 선택 관리
+    window.toggleCompareSelect = function(id) {
+        if (selectedCompareIds.includes(id)) {
+            selectedCompareIds = selectedCompareIds.filter(i => i !== id);
+        } else {
+            if (selectedCompareIds.length >= 3) {
+                alert("비교는 최대 3개 매물까지 선택 가능합니다.");
+                renderImjangs();
+                return;
+            }
+            selectedCompareIds.push(id);
+        }
+        document.getElementById('compareCount').innerText = selectedCompareIds.length;
+    };
+
+    // 5. 비교 모달 열기
+    window.openCompareModal = function() {
+        if (selectedCompareIds.length < 2) {
+            alert("비교할 매물을 최소 2개 이상 선택해 주세요!");
+            return;
+        }
+
+        const items = allImjangs.filter(i => selectedCompareIds.includes(i.id));
+        
+        let html = `<div class="table-responsive"><table class="table table-bordered text-center align-middle"><thead><tr><th style="width:150px;">구분</th>`;
+        items.forEach(item => {
+            html += `<th class="fs-5">${item.title}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        // 항목별 비교 행
+        html += `<tr><td class="fw-bold bg-light">가격</td>` + items.map(i => `<td class="text-primary fw-bold fs-6">${i.price}</td>`).join('') + `</tr>`;
+        html += `<tr><td class="fw-bold bg-light">평점</td>` + items.map(i => `<td>⭐ ${i.rating}점</td>`).join('') + `</tr>`;
+        html += `<tr><td class="fw-bold bg-light">주소</td>` + items.map(i => `<td class="small">${i.address || '-'}</td>`).join('') + `</tr>`;
+        
+        // 체크리스트 비교
+        const chkList = [
+            { key: 'chk_sash', label: '샷시 상태' },
+            { key: 'chk_leak', label: '누수 없음' },
+            { key: 'chk_mold', label: '곰팡이 없음' },
+            { key: 'chk_water', label: '수압 양호' },
+            { key: 'chk_noise', label: '소음 적음' },
+            { key: 'chk_underpark', label: '지하주차장' },
+            { key: 'chk_station', label: '지하철역' },
+            { key: 'chk_mart', label: '대형마트' },
+            { key: 'chk_school', label: '학교' },
+            { key: 'chk_park', label: '공원' },
+            { key: 'chk_daiso', label: '다이소' },
+            { key: 'chk_oliveyoung', label: '올리브영' },
+            { key: 'chk_convenience', label: '편의점' }
+        ];
+
+        chkList.forEach(c => {
+            html += `<tr><td class="fw-bold bg-light">${c.label}</td>` + 
+                items.map(i => `<td>${i.checklist?.[c.key] ? '✅' : '❌'}</td>`).join('') + `</tr>`;
+        });
+
+        html += `<tr><td class="fw-bold bg-light">상세 메모</td>` + items.map(i => `<td class="small text-start">${i.memo || '-'}</td>`).join('') + `</tr>`;
+
+        html += `</tbody></table></div>`;
+
+        document.getElementById('compareModalBody').innerHTML = html;
+        const modal = new bootstrap.Modal(document.getElementById('compareModal'));
+        modal.show();
+    };
+
+    // 6. 저장 / 수정 제출
     document.getElementById('imjangForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -259,7 +381,14 @@
             chk_mold: document.getElementById('chk_mold').checked,
             chk_water: document.getElementById('chk_water').checked,
             chk_noise: document.getElementById('chk_noise').checked,
-            chk_parking: document.getElementById('chk_parking').checked,
+            chk_underpark: document.getElementById('chk_underpark').checked,
+            chk_station: document.getElementById('chk_station').checked,
+            chk_mart: document.getElementById('chk_mart').checked,
+            chk_school: document.getElementById('chk_school').checked,
+            chk_park: document.getElementById('chk_park').checked,
+            chk_daiso: document.getElementById('chk_daiso').checked,
+            chk_oliveyoung: document.getElementById('chk_oliveyoung').checked,
+            chk_convenience: document.getElementById('chk_convenience').checked,
         };
 
         const formData = {
@@ -274,25 +403,23 @@
 
         try {
             if (currentEditId) {
-                // 수정 모드
                 await updateDoc(doc(db, "imjangs", currentEditId), formData);
-                alert("일지가 성공적으로 수정되었습니다!");
+                alert("일지가 수정되었습니다!");
                 cancelEdit();
             } else {
-                // 신규 저장 모드
                 formData.createdAt = new Date();
                 formData.comments = [];
                 await addDoc(collection(db, "imjangs"), formData);
-                alert("새로운 일지가 등록되었습니다!");
+                alert("새 일지가 등록되었습니다!");
             }
             resetForm();
         } catch (err) {
             console.error("저장 실패:", err);
-            alert("저장에 실패했습니다: " + err.message);
+            alert("저장 실패: " + err.message);
         }
     });
 
-    // 5. 수정하기 함수
+    // 7. 수정 모드 전환
     window.editImjang = function(id) {
         const item = allImjangs.find(i => i.id === id);
         if (!item) return;
@@ -309,18 +436,16 @@
         document.getElementById('memo').value = item.memo || '';
 
         if (item.checklist) {
-            document.getElementById('chk_sash').checked = !!item.checklist.chk_sash;
-            document.getElementById('chk_leak').checked = !!item.checklist.chk_leak;
-            document.getElementById('chk_mold').checked = !!item.checklist.chk_mold;
-            document.getElementById('chk_water').checked = !!item.checklist.chk_water;
-            document.getElementById('chk_noise').checked = !!item.checklist.chk_noise;
-            document.getElementById('chk_parking').checked = !!item.checklist.chk_parking;
+            const keys = ['chk_sash', 'chk_leak', 'chk_mold', 'chk_water', 'chk_noise', 'chk_underpark', 'chk_station', 'chk_mart', 'chk_school', 'chk_park', 'chk_daiso', 'chk_oliveyoung', 'chk_convenience'];
+            keys.forEach(k => {
+                const el = document.getElementById(k);
+                if (el) el.checked = !!item.checklist[k];
+            });
         }
 
         document.getElementById('formCard').scrollIntoView({ behavior: 'smooth' });
     };
 
-    // 6. 수정 취소
     window.cancelEdit = function() {
         currentEditId = null;
         document.getElementById('formTitle').innerText = "📝 새로운 임장일지 작성";
@@ -333,14 +458,14 @@
         document.getElementById('imjangForm').reset();
     }
 
-    // 7. 삭제하기
+    // 8. 삭제
     window.deleteImjang = async function(id) {
         if (confirm("정말 이 일지를 삭제하시겠습니까?")) {
             await deleteDoc(doc(db, "imjangs", id));
         }
     };
 
-    // 8. 댓글/Q&A 추가
+    // 9. 댓글/Q&A 추가
     window.addComment = async function(id) {
         const author = document.getElementById(`author_${id}`).value;
         const input = document.getElementById(`commentInput_${id}`);
@@ -358,7 +483,7 @@
         input.value = '';
     };
 
-    // 9. 뷰 모드 및 검색
+    // 10. 뷰 모드 설정 및 검색
     window.setViewMode = function(mode) {
         currentViewMode = mode;
         document.getElementById('btnCardView').classList.toggle('active', mode === 'card');
