@@ -31,6 +31,7 @@
 
         let allRecords = [];
         let selectedCompareIds = new Set();
+        let currentViewMode = 'card'; // 'card' or 'table'
 
         function getBase64(file) {
             return new Promise((resolve, reject) => {
@@ -136,7 +137,8 @@
             } else {
                 if (selectedCompareIds.size >= 3) {
                     alert('비교는 최대 3개까지 선택 가능합니다.');
-                    document.getElementById(`chk-${id}`).checked = false;
+                    const chk = document.getElementById(`chk-${id}`);
+                    if(chk) chk.checked = false;
                     return;
                 }
                 selectedCompareIds.add(id);
@@ -156,7 +158,7 @@
             }
         }
 
-        // 비교 모달 팝업 열기
+        // 비교 모달 팝업
         window.openCompareModal = function() {
             const modal = document.getElementById('compareModal');
             const modalBody = document.getElementById('compareModalBody');
@@ -211,106 +213,183 @@
             document.getElementById('compareModal').classList.add('hidden');
         };
 
-        // 실시간 목록
-        onSnapshot(recordsCol, (snapshot) => {
-            const listEl = document.getElementById('recordsList');
-            const countEl = document.getElementById('totalCount');
-            
-            allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            listEl.innerHTML = '';
-            countEl.textContent = allRecords.length;
+        // 보기 모드 변경 (카드형 vs 표/리스트형)
+        window.setViewMode = function(mode) {
+            currentViewMode = mode;
+            const btnCard = document.getElementById('btnViewCard');
+            const btnTable = document.getElementById('btnViewTable');
 
-            if (allRecords.length === 0) {
-                listEl.innerHTML = `<div class="text-center py-12 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">등록된 임장 기록이 없습니다. 새로운 매물을 등록해 보세요!</div>`;
+            if (mode === 'card') {
+                btnCard.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm";
+                btnTable.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200";
+            } else {
+                btnTable.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm";
+                btnCard.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200";
+            }
+            renderRecords();
+        };
+
+        // 검색 및 필터링 적용된 목록 렌더링
+        window.renderRecords = function() {
+            const listEl = document.getElementById('recordsList');
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase().trim();
+            const ratingFilter = document.getElementById('filterRating').value;
+
+            let filtered = allRecords.filter(item => {
+                const matchKeyword = (item.title || '').toLowerCase().includes(searchKeyword) ||
+                                     (item.location || '').toLowerCase().includes(searchKeyword) ||
+                                     (item.generalMemo || '').toLowerCase().includes(searchKeyword);
+                
+                const matchRating = ratingFilter === 'ALL' || (item.rating || '').includes(ratingFilter);
+                return matchKeyword && matchRating;
+            });
+
+            listEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-12 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">조건에 맞는 임장 기록이 없습니다.</div>`;
                 return;
             }
 
-            allRecords.forEach(data => {
-                const id = data.id;
-                const card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col space-y-4';
-                
-                let photosHtml = '';
-                if (data.photos && data.photos.length > 0) {
-                    photosHtml = `<div class="flex gap-2 overflow-x-auto py-2">` + 
-                        data.photos.map(img => `<img src="${img}" class="w-24 h-24 object-cover rounded-lg border">`).join('') + 
-                    `</div>`;
-                }
-
-                let commentsHtml = '';
-                if (data.comments && data.comments.length > 0) {
-                    commentsHtml = data.comments.map(c => `
-                        <div class="bg-gray-50 p-2.5 rounded-lg text-xs space-y-0.5 border border-gray-100">
-                            <div class="flex justify-between font-bold text-gray-700">
-                                <span>💬 ${escapeHtml(c.author)}</span>
-                                <span class="text-gray-400 text-[10px]">${c.date}</span>
-                            </div>
-                            <p class="text-gray-600 whitespace-pre-wrap">${escapeHtml(c.text)}</p>
-                        </div>
-                    `).join('');
-                } else {
-                    commentsHtml = `<p class="text-xs text-gray-400 italic">아직 작성된 질문/답변 댓글이 없습니다.</p>`;
-                }
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start border-b pb-3">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-semibold">${escapeHtml(data.rating || '미정')}</span>
-                                <label class="text-xs text-indigo-600 cursor-pointer font-bold flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg">
-                                    <input type="checkbox" id="chk-${id}" ${selectedCompareIds.has(id) ? 'checked' : ''} onchange="toggleCompare('${id}')"> 비교 추가
-                                </label>
-                            </div>
-                            <h3 class="text-xl font-bold text-gray-800">${escapeHtml(data.title || '')}</h3>
-                            ${data.location ? `<p class="text-sm text-gray-500 mt-0.5"><i class="fas fa-map-marker-alt text-red-400 mr-1"></i>${escapeHtml(data.location)}</p>` : ''}
-                        </div>
-                        <button onclick="deleteRecord('${id}')" class="text-red-400 hover:text-red-600 p-2">
-                            <i class="fas fa-trash-alt text-lg"></i>
-                        </button>
-                    </div>
-
-                    ${data.price ? `<p class="text-md font-bold text-indigo-600"><i class="fas fa-won-sign mr-1"></i>가격/보증금: ${escapeHtml(data.price)}</p>` : ''}
-
-                    <!-- 주변 환경 -->
-                    <div class="bg-slate-50 p-3.5 rounded-xl text-sm space-y-1">
-                        <p class="font-bold text-gray-700 mb-1"><i class="fas fa-store text-indigo-500 mr-1"></i>주변 환경</p>
-                        <p class="text-gray-600 text-xs">${data.envSelected && data.envSelected.length > 0 ? data.envSelected.join(', ') : '선택 항목 없음'}</p>
-                        ${data.envMemo ? `<p class="text-xs text-gray-500 mt-1 border-t pt-1">메모: ${escapeHtml(data.envMemo)}</p>` : ''}
-                    </div>
-
-                    <!-- 내부 시설 -->
-                    <div class="bg-slate-50 p-3.5 rounded-xl text-sm space-y-1">
-                        <p class="font-bold text-gray-700 mb-1"><i class="fas fa-home text-indigo-500 mr-1"></i>내부 시설 체크</p>
-                        <p class="text-gray-600 text-xs">${data.facSelected && data.facSelected.length > 0 ? data.facSelected.join(', ') : '선택 항목 없음'}</p>
-                        ${data.facMemo ? `<p class="text-xs text-gray-500 mt-1 border-t pt-1">메모: ${escapeHtml(data.facMemo)}</p>` : ''}
-                    </div>
-
-                    ${data.generalMemo ? `
-                    <div class="text-sm bg-gray-50 p-3 rounded-xl">
-                        <p class="font-bold text-gray-700"><i class="fas fa-sticky-note mr-1"></i>종합 메모</p>
-                        <p class="text-gray-600 whitespace-pre-wrap mt-0.5">${escapeHtml(data.generalMemo)}</p>
-                    </div>` : ''}
-
-                    <!-- 현장 사진 -->
-                    ${photosHtml}
-
-                    <!-- 댓글 / Q&A 섹션 -->
-                    <div class="border-t pt-4 mt-2">
-                        <h4 class="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
-                            <i class="fas fa-comments text-indigo-500"></i> 자매 전용 Q&A / 댓글
-                        </h4>
-                        <div class="space-y-2 mb-3">
-                            ${commentsHtml}
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="text" id="author-${id}" placeholder="이름 (예: 민정/동생)" class="w-24 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
-                            <input type="text" id="commentText-${id}" placeholder="질문이나 답글을 적으세요..." class="flex-1 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
-                            <button onclick="addComment('${id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">등록</button>
-                        </div>
-                    </div>
+            if (currentViewMode === 'table') {
+                // 간편 리스트/표 모드
+                let tableHtml = `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto p-2">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 text-gray-600 border-b">
+                                    <th class="p-3">비교</th>
+                                    <th class="p-3">매물명</th>
+                                    <th class="p-3">가격/보증금</th>
+                                    <th class="p-3">선호도</th>
+                                    <th class="p-3">위치</th>
+                                    <th class="p-3 text-right">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
                 `;
-                listEl.appendChild(card);
-            });
+
+                filtered.forEach(data => {
+                    tableHtml += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3">
+                                <input type="checkbox" id="chk-${data.id}" ${selectedCompareIds.has(data.id) ? 'checked' : ''} onchange="toggleCompare('${data.id}')">
+                            </td>
+                            <td class="p-3 font-bold text-gray-800">${escapeHtml(data.title)}</td>
+                            <td class="p-3 font-semibold text-indigo-600">${escapeHtml(data.price || '-')}</td>
+                            <td class="p-3">${escapeHtml(data.rating || '-')}</td>
+                            <td class="p-3 text-gray-500">${escapeHtml(data.location || '-')}</td>
+                            <td class="p-3 text-right">
+                                <button onclick="deleteRecord('${data.id}')" class="text-red-400 hover:text-red-600 font-medium">삭제</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `</tbody></table></div>`;
+                listEl.innerHTML = tableHtml;
+
+            } else {
+                // 카드 모드
+                filtered.forEach(data => {
+                    const id = data.id;
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col space-y-4';
+                    
+                    let photosHtml = '';
+                    if (data.photos && data.photos.length > 0) {
+                        photosHtml = `<div class="flex gap-2 overflow-x-auto py-2">` + 
+                            data.photos.map(img => `<img src="${img}" class="w-24 h-24 object-cover rounded-lg border">`).join('') + 
+                        `</div>`;
+                    }
+
+                    let commentsHtml = '';
+                    if (data.comments && data.comments.length > 0) {
+                        commentsHtml = data.comments.map(c => `
+                            <div class="bg-gray-50 p-2.5 rounded-lg text-xs space-y-0.5 border border-gray-100">
+                                <div class="flex justify-between font-bold text-gray-700">
+                                    <span>💬 ${escapeHtml(c.author)}</span>
+                                    <span class="text-gray-400 text-[10px]">${c.date}</span>
+                                </div>
+                                <p class="text-gray-600 whitespace-pre-wrap">${escapeHtml(c.text)}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        commentsHtml = `<p class="text-xs text-gray-400 italic">아직 작성된 질문/답변 댓글이 없습니다.</p>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start border-b pb-3">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-semibold">${escapeHtml(data.rating || '미정')}</span>
+                                    <label class="text-xs text-indigo-600 cursor-pointer font-bold flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg">
+                                        <input type="checkbox" id="chk-${id}" ${selectedCompareIds.has(id) ? 'checked' : ''} onchange="toggleCompare('${id}')"> 비교 추가
+                                    </label>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-800">${escapeHtml(data.title || '')}</h3>
+                                ${data.location ? `<p class="text-sm text-gray-500 mt-0.5"><i class="fas fa-map-marker-alt text-red-400 mr-1"></i>${escapeHtml(data.location)}</p>` : ''}
+                            </div>
+                            <button onclick="deleteRecord('${id}')" class="text-red-400 hover:text-red-600 p-2">
+                                <i class="fas fa-trash-alt text-lg"></i>
+                            </button>
+                        </div>
+
+                        ${data.price ? `<p class="text-md font-bold text-indigo-600"><i class="fas fa-won-sign mr-1"></i>가격/보증금: ${escapeHtml(data.price)}</p>` : ''}
+
+                        <!-- 주변 환경 -->
+                        <div class="bg-slate-50 p-3.5 rounded-xl text-sm space-y-1">
+                            <p class="font-bold text-gray-700 mb-1"><i class="fas fa-store text-indigo-500 mr-1"></i>주변 환경</p>
+                            <p class="text-gray-600 text-xs">${data.envSelected && data.envSelected.length > 0 ? data.envSelected.join(', ') : '선택 항목 없음'}</p>
+                            ${data.envMemo ? `<p class="text-xs text-gray-500 mt-1 border-t pt-1">메모: ${escapeHtml(data.envMemo)}</p>` : ''}
+                        </div>
+
+                        <!-- 내부 시설 -->
+                        <div class="bg-slate-50 p-3.5 rounded-xl text-sm space-y-1">
+                            <p class="font-bold text-gray-700 mb-1"><i class="fas fa-home text-indigo-500 mr-1"></i>내부 시설 체크</p>
+                            <p class="text-gray-600 text-xs">${data.facSelected && data.facSelected.length > 0 ? data.facSelected.join(', ') : '선택 항목 없음'}</p>
+                            ${data.facMemo ? `<p class="text-xs text-gray-500 mt-1 border-t pt-1">메모: ${escapeHtml(data.facMemo)}</p>` : ''}
+                        </div>
+
+                        ${data.generalMemo ? `
+                        <div class="text-sm bg-gray-50 p-3 rounded-xl">
+                            <p class="font-bold text-gray-700"><i class="fas fa-sticky-note mr-1"></i>종합 메모</p>
+                            <p class="text-gray-600 whitespace-pre-wrap mt-0.5">${escapeHtml(data.generalMemo)}</p>
+                        </div>` : ''}
+
+                        <!-- 현장 사진 -->
+                        ${photosHtml}
+
+                        <!-- 댓글 / Q&A 섹션 -->
+                        <div class="border-t pt-4 mt-2">
+                            <h4 class="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                <i class="fas fa-comments text-indigo-500"></i> 자매 전용 Q&A / 댓글
+                            </h4>
+                            <div class="space-y-2 mb-3">
+                                ${commentsHtml}
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="author-${id}" placeholder="이름 (예: 민정/동생)" class="w-24 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
+                                <input type="text" id="commentText-${id}" placeholder="질문이나 답글을 적으세요..." class="flex-1 px-2.5 py-1.5 border rounded-lg text-xs outline-none focus:ring-1 focus:ring-indigo-500">
+                                <button onclick="addComment('${id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">등록</button>
+                            </div>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+            }
+        };
+
+        // 실시간 대시보드 및 데이터 반영
+        onSnapshot(recordsCol, (snapshot) => {
+            allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // 통계 업데이트
+            document.getElementById('totalCount').textContent = allRecords.length;
+            const recommendCount = allRecords.filter(r => (r.rating || '').includes('최상') || (r.rating || '').includes('상')).length;
+            document.getElementById('recommendCount').textContent = recommendCount;
+
+            renderRecords();
         });
 
         function escapeHtml(text) {
@@ -333,104 +412,168 @@
                 </h1>
                 <p class="text-indigo-200 text-sm mt-1">동생과 함께 쓰는 실시간 비교 & Q&A 임장장부</p>
             </div>
-            <div class="bg-indigo-700 px-4 py-2 rounded-xl text-sm font-medium">
-                총 등록: <span id="totalCount" class="font-bold text-yellow-300">0</span>건
-            </div>
         </div>
     </header>
 
-    <main class="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        <!-- 입력 폼 영역 -->
-        <section class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
-            <h2 class="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2 border-b pb-3">
-                <i class="fas fa-edit text-indigo-600"></i> 새 임장 작성
-            </h2>
+    <main class="max-w-5xl mx-auto px-4 space-y-6">
 
-            <form id="imjangForm" onsubmit="return false;" class="space-y-5">
-                
-                <!-- 1. 매물 정보 -->
+        <!-- 상단 대시보드 요약 카드 -->
+        <section class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-2">1. 매물 기본 정보</h3>
-                    <div class="space-y-2">
-                        <input type="text" id="recordTitle" placeholder="매물명 / 단지명 * (예: 래미안 101동)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <input type="text" id="recordLocation" placeholder="위치 / 주소 (예: 서울시 마포구...)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <input type="text" id="recordPrice" placeholder="매매가 / 보증금 (예: 8.5억 / 전세 4억)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
+                    <p class="text-xs text-gray-500 font-semibold">전체 등록 매물</p>
+                    <p class="text-2xl font-bold text-gray-800"><span id="totalCount">0</span>개</p>
                 </div>
-
-                <!-- 2. 주변 환경 -->
+                <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
+                    <i class="fas fa-building"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-2">2. 주변 환경 체크</h3>
-                    <div class="grid grid-cols-3 gap-2 text-xs text-gray-700 mb-2">
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envMart" data-label="대형마트"> 대형마트</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envTrans" data-label="교통(역/버스)"> 교통</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envSchool" data-label="학교/학원가"> 학교</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envOlive" data-label="올리브영"> 올리브영</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envDaiso" data-label="다이소"> 다이소</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="envPark" data-label="공원/산책로"> 공원</label>
-                    </div>
-                    <input type="text" id="envMemo" placeholder="주변 환경 관련 추가 메모" class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none">
+                    <p class="text-xs text-gray-500 font-semibold">추천/강추 매물</p>
+                    <p class="text-2xl font-bold text-indigo-600"><span id="recommendCount">0</span>개</p>
                 </div>
-
-                <!-- 3. 내부 시설 체크 (확장 항목) -->
+                <div class="w-10 h-10 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center font-bold">
+                    <i class="fas fa-star"></i>
+                </div>
+            </div>
+            <div class="col-span-2 md:col-span-1 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-2">3. 내부 시설/상태 체크</h3>
-                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-700 mb-2">
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facSash" data-label="샷시 상태"> 샷시 상태 양호</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facVeranda" data-label="베란다 확장"> 베란다 확장 완료</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facLeak" data-label="누수 체크"> 누수 흔적 없음</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facHeat" data-label="난방 정상"> 난방/보일러 정상</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facMold" data-label="곰팡이 없음"> 곰팡이/습기 없음</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facWater" data-label="수압/배수 양호"> 수압 및 배수 양호</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facSun" data-label="채광/조망 우수"> 일조량 / 채광 우수</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facNoise" data-label="층간소음 조용"> 층간/외부 소음 적음</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facPark" data-label="주차 여유"> 주차 공간 여유</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" id="facRemodel" data-label="수리 필요없음"> 인테리어/수리 양호</label>
-                    </div>
-                    <input type="text" id="facMemo" placeholder="내부 시설/수리 필요부분 상세 메모" class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none">
+                    <p class="text-xs text-gray-500 font-semibold">비교 선택 매물</p>
+                    <p class="text-2xl font-bold text-purple-600"><span id="compareCountDashboard">0</span>개</p>
                 </div>
-
-                <!-- 4. 종합 평가 & 선호도 -->
-                <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-1">4. 종합 평가 / 선호도</h3>
-                    <select id="recordRating" class="w-full px-3 py-2 border rounded-lg text-sm bg-white outline-none">
-                        <option value="⭐⭐⭐⭐⭐ (최상 - 강추)">⭐⭐⭐⭐⭐ (최상 - 강추)</option>
-                        <option value="⭐⭐⭐⭐ (상 - 우수)">⭐⭐⭐⭐ (상 - 우수)</option>
-                        <option value="⭐⭐⭐ (중 - 보통)" selected>⭐⭐⭐ (중 - 보통)</option>
-                        <option value="⭐⭐ (하 - 아쉬움)">⭐⭐ (하 - 아쉬움)</option>
-                        <option value="⭐ (최하 - 비추)">⭐ (최하 - 비추)</option>
-                    </select>
+                <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center font-bold">
+                    <i class="fas fa-balance-scale"></i>
                 </div>
-
-                <!-- 5. 특이사항 메모 -->
-                <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-1">5. 기타 특이사항 메모</h3>
-                    <textarea id="generalMemo" rows="3" placeholder="입주가능일, 채광 시간, 집주인 특이사항 등..." class="w-full px-3 py-2 border rounded-lg text-xs outline-none resize-none"></textarea>
-                </div>
-
-                <!-- 6. 사진 첨부 -->
-                <div>
-                    <h3 class="text-sm font-bold text-indigo-900 mb-1">6. 현장 사진 첨부</h3>
-                    <input type="file" id="recordPhotos" accept="image/*" multiple class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                </div>
-
-                <!-- 저장 버튼 -->
-                <button onclick="saveRecord()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm">
-                    <i class="fas fa-save"></i> 임장 기록 저장하기
-                </button>
-            </form>
-        </section>
-
-        <!-- 저장된 임장 목록 영역 -->
-        <section class="lg:col-span-7">
-            <h2 class="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2">
-                <i class="fas fa-list-alt text-indigo-600"></i> 실시간 공유 임장 목록
-            </h2>
-            <div id="recordsList" class="space-y-4">
-                <div class="text-center py-12 text-gray-400 bg-white rounded-2xl">데이터를 불러오는 중입니다...</div>
             </div>
         </section>
+
+        <!-- 메인 레이아웃 (폼 + 목록) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 입력 폼 영역 -->
+            <section class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
+                <h2 class="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2 border-b pb-3">
+                    <i class="fas fa-edit text-indigo-600"></i> 새 임장 작성
+                </h2>
+
+                <form id="imjangForm" onsubmit="return false;" class="space-y-5">
+                    
+                    <!-- 1. 매물 정보 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-2">1. 매물 기본 정보</h3>
+                        <div class="space-y-2">
+                            <input type="text" id="recordTitle" placeholder="매물명 / 단지명 * (예: 래미안 101동)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="text" id="recordLocation" placeholder="위치 / 주소 (예: 서울시 마포구...)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="text" id="recordPrice" placeholder="매매가 / 보증금 (예: 8.5억 / 전세 4억)" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- 2. 주변 환경 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-2">2. 주변 환경 체크</h3>
+                        <div class="grid grid-cols-3 gap-2 text-xs text-gray-700 mb-2">
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envMart" data-label="대형마트"> 대형마트</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envTrans" data-label="교통(역/버스)"> 교통</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envSchool" data-label="학교/학원가"> 학교</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envOlive" data-label="올리브영"> 올리브영</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envDaiso" data-label="다이소"> 다이소</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="envPark" data-label="공원/산책로"> 공원</label>
+                        </div>
+                        <input type="text" id="envMemo" placeholder="주변 환경 관련 추가 메모" class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none">
+                    </div>
+
+                    <!-- 3. 내부 시설 체크 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-2">3. 내부 시설/상태 체크</h3>
+                        <div class="grid grid-cols-2 gap-2 text-xs text-gray-700 mb-2">
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facSash" data-label="샷시 상태"> 샷시 상태 양호</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facVeranda" data-label="베란다 확장"> 베란다 확장 완료</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facLeak" data-label="누수 체크"> 누수 흔적 없음</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facHeat" data-label="난방 정상"> 난방/보일러 정상</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facMold" data-label="곰팡이 없음"> 곰팡이/습기 없음</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facWater" data-label="수압/배수 양호"> 수압 및 배수 양호</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facSun" data-label="채광/조망 우수"> 일조량 / 채광 우수</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facNoise" data-label="층간소음 조용"> 층간/외부 소음 적음</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facPark" data-label="주차 여유"> 주차 공간 여유</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" id="facRemodel" data-label="수리 필요없음"> 인테리어/수리 양호</label>
+                        </div>
+                        <input type="text" id="facMemo" placeholder="내부 시설/수리 필요부분 상세 메모" class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none">
+                    </div>
+
+                    <!-- 4. 종합 평가 & 선호도 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-1">4. 종합 평가 / 선호도</h3>
+                        <select id="recordRating" class="w-full px-3 py-2 border rounded-lg text-sm bg-white outline-none">
+                            <option value="⭐⭐⭐⭐⭐ (최상 - 강추)">⭐⭐⭐⭐⭐ (최상 - 강추)</option>
+                            <option value="⭐⭐⭐⭐ (상 - 우수)">⭐⭐⭐⭐ (상 - 우수)</option>
+                            <option value="⭐⭐⭐ (중 - 보통)" selected>⭐⭐⭐ (중 - 보통)</option>
+                            <option value="⭐⭐ (하 - 아쉬움)">⭐⭐ (하 - 아쉬움)</option>
+                            <option value="⭐ (최하 - 비추)">⭐ (최하 - 비추)</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. 특이사항 메모 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-1">5. 기타 특이사항 메모</h3>
+                        <textarea id="generalMemo" rows="3" placeholder="입주가능일, 채광 시간, 집주인 특이사항 등..." class="w-full px-3 py-2 border rounded-lg text-xs outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- 6. 사진 첨부 -->
+                    <div>
+                        <h3 class="text-sm font-bold text-indigo-900 mb-1">6. 현장 사진 첨부</h3>
+                        <input type="file" id="recordPhotos" accept="image/*" multiple class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    </div>
+
+                    <!-- 저장 버튼 -->
+                    <button onclick="saveRecord()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm">
+                        <i class="fas fa-save"></i> 임장 기록 저장하기
+                    </button>
+                </form>
+            </section>
+
+            <!-- 저장된 임장 목록 영역 -->
+            <section class="lg:col-span-7 space-y-4">
+                
+                <!-- 검색 및 뷰 모드 조작 바 -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 space-y-3">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-list-alt text-indigo-600"></i> 임장 목록
+                        </h2>
+                        <!-- 보기 전환 버튼 -->
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                            <button id="btnViewCard" onclick="setViewMode('card')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm">
+                                <i class="fas fa-th-large mr-1"></i>카드형
+                            </button>
+                            <button id="btnViewTable" onclick="setViewMode('table')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                <i class="fas fa-list mr-1"></i>간편 표 보기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 검색어 입력 및 별점 필터 -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div class="sm:col-span-2">
+                            <input type="text" id="searchInput" oninput="renderRecords()" placeholder="🔍 매물명, 위치, 메모 검색..." class="w-full px-3 py-2 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <select id="filterRating" onchange="renderRecords()" class="w-full px-3 py-2 border rounded-xl text-xs bg-white outline-none">
+                                <option value="ALL">전체 등급 보기</option>
+                                <option value="최상">⭐⭐⭐⭐⭐ 강추</option>
+                                <option value="상">⭐⭐⭐⭐ 우수</option>
+                                <option value="중">⭐⭐⭐ 보통</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 동적 렌더링 목록 -->
+                <div id="recordsList" class="space-y-4">
+                    <div class="text-center py-12 text-gray-400 bg-white rounded-2xl">데이터를 불러오는 중입니다...</div>
+                </div>
+            </section>
+        </div>
     </main>
 
     <!-- 하단 매물 비교 바 -->
